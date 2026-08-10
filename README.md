@@ -124,3 +124,75 @@ Sortie : fichier `.sql` téléchargeable + aperçu à l'écran. Prévoir échapp
 - Les prototypes persistent en `localStorage` : à remplacer par une vraie persistance.
 - La matrice complète (Tous les objets) est dense : **virtualiser** en production.
 - Le format SQL doit être **validé sur le schéma Wavesoft réel** avant exécution ; générer d'abord en environnement de test.
+
+---
+
+# Implémentation (application)
+
+Le prototype de handoff ci-dessus a été implémenté en application réelle
+(React + TypeScript + Vite côté front, Node/TypeScript + Express côté back).
+
+## Arborescence
+
+```
+frontend/                 React + TS + Vite
+  src/
+    types.ts              Role, Fonction, Autorisation, CatalogEntry…
+    data/
+      catalog.ts          Catalogue Wavesoft typé (612 entrées, généré)
+      seed.ts             Seed rôles/fonctions (issu de l'organigramme)
+      catalogHelpers.ts   Options d'objet, filtrage, aplatissement des lignes
+    store/
+      api.ts              Client API
+      useMatrixStore.ts   Store Zustand (perms + CRUD) + persistance
+    styles/
+      theme.ts            Design tokens du README (couleurs, rayons, ombres)
+      global.css
+    components/
+      Matrix/MatrixTable.tsx   Table virtualisée (react-window), en-têtes figés
+      ui/Shell.tsx             Navigation + boutons
+    pages/
+      MatrixPage.tsx      Écran matrice (toolbar + table + légende)
+      RolesPage.tsx       CRUD rôles & fonctions
+      OrganigrammePage.tsx     Visualisation hiérarchique
+backend/                  Node + TS + Express
+  src/
+    sql/buildSql.ts       Générateur SQL PUR et testable (idempotent)
+    store/fileStore.ts    Persistance JSON (remplaçable par une vraie base)
+    index.ts              API : /api/state (GET/PUT), /api/sql/generate (POST)
+  test/buildSql.test.ts   Tests unitaires (vitest)
+```
+
+## Démarrage
+
+```bash
+npm install            # installe frontend + backend (workspaces)
+
+npm run dev:back       # API sur http://localhost:8787
+npm run dev:front      # UI sur http://localhost:5173 (proxy /api → 8787)
+```
+
+Sans backend, le front bascule automatiquement sur le **seed** puis persiste
+en `localStorage` ; avec le backend, l'état est persisté sur fichier
+(`backend/data/state.json`).
+
+## Vérifications
+
+```bash
+npm run typecheck      # tsc front + back
+npm run build          # build de production front + back
+npm test               # tests du générateur SQL (vitest)
+```
+
+## Correspondance avec le handoff
+
+- **Matrice** : en-têtes figés (sticky), colonnes verticales par poste,
+  bandeaux d'objet, cases ✓ — **virtualisée** via `react-window` pour
+  supporter « Tous les objets » sans lag. Colonne *Gestionnaire de stock*
+  pré-remplie d'après le drapeau de référence du catalogue (profil STOCK).
+- **Persistance** : `localStorage` du prototype remplacé par un store Zustand
+  + API (repli `localStorage`).
+- **CRUD rôles & fonctions** : chaque fonction créée devient une colonne de la
+  matrice.
+- **Génération SQL** : module pur `buildSql(profil)` côté backend — noms de
+  tables/colonnes en **placeholders à valider** contre le schéma Wavesoft réel.

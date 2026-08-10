@@ -1,0 +1,13 @@
+{
+  "name": "ws-autorisation",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["frontend", "backend"],
+  "scripts": {
+    "dev:front": "npm -w frontend run dev",
+    "dev:back": "npm -w backend run dev",
+    "build": "npm -w frontend run build && npm -w backend run build",
+    "typecheck": "npm -w frontend run typecheck && npm -w backend run typecheck",
+    "test": "npm -w backend test"
+  }
+}

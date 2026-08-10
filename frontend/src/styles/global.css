@@ -1,0 +1,30 @@
+/* Police Hanken Grotesk (self-hosted via @fontsource, importée dans main.tsx). */
+:root {
+  --canvas: #f6f4ef;
+  --surface: #ffffff;
+  --border: #e8e4dc;
+  --ink: #2b2a31;
+  --muted: #6d6a63;
+  --muted2: #8a8780;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; padding: 0; height: 100%; }
+
+body {
+  font-family: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+  color: var(--ink);
+  background: var(--canvas);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: #5b82b0; text-decoration: none; }
+a:hover { color: #3f6796; }
+
+button { font-family: inherit; }
+input, select { font-family: inherit; }
+
+/* Barre de défilement de la matrice */
+.wv-scroll::-webkit-scrollbar { height: 14px; width: 14px; }
+.wv-scroll::-webkit-scrollbar-thumb { background: #cfcabf; border-radius: 7px; border: 3px solid #fff; }
+.wv-scroll::-webkit-scrollbar-track { background: #f2efe8; }
