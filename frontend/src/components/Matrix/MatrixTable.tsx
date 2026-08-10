@@ -38,6 +38,14 @@ interface Props {
   perms: PermMap;
   counts: Record<string, number>;
   onToggle: (fonctionId: string, objet: string, intitule: string, fonction: string) => void;
+  onSetAll: (fonctionId: string, value: boolean) => void;
+  onCopy: (fromId: string, toId: string) => void;
+}
+
+interface MenuState {
+  fonctionId: string;
+  x: number;
+  y: number;
 }
 
 /** Force la largeur totale de l'élément interne pour activer le scroll horizontal + sticky. */
@@ -46,11 +54,12 @@ const makeInner = (totalWidth: number) =>
     return <div ref={ref} style={{ ...style, width: totalWidth, position: 'relative' }} {...rest} />;
   });
 
-export function MatrixTable({ roles, fonctions, items, perms, counts, onToggle }: Props) {
+export function MatrixTable({ roles, fonctions, items, perms, counts, onToggle, onSetAll, onCopy }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const listOuterRef = useRef<HTMLDivElement>(null);
   const headInnerRef = useRef<HTMLDivElement>(null);
   const [viewW, setViewW] = useState(1000);
+  const [menu, setMenu] = useState<MenuState | null>(null);
 
   // Largeur visible (pour dimensionner la liste et le viewport de l'en-tête).
   useLayoutEffect(() => {
@@ -82,10 +91,27 @@ export function MatrixTable({ roles, fonctions, items, perms, counts, onToggle }
     if (!outer) return;
     const onScroll = () => {
       if (headInnerRef.current) headInnerRef.current.style.transform = `translateX(${-outer.scrollLeft}px)`;
+      setMenu(null); // le menu ancré devient obsolète au défilement
     };
     outer.addEventListener('scroll', onScroll, { passive: true });
     return () => outer.removeEventListener('scroll', onScroll);
   }, [totalWidth]);
+
+  // Fermeture du menu (clic extérieur / Échap).
+  useEffect(() => {
+    if (!menu) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (!t.closest('[data-poste-menu]')) setMenu(null);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenu(null);
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menu]);
 
   const listKey = useMemo(
     () => `${items.length}|${columns.map((c) => c.fonction.id).join(',')}`,
@@ -275,10 +301,36 @@ export function MatrixTable({ roles, fonctions, items, perms, counts, onToggle }
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '8px 0 6px',
+                    padding: '4px 0 6px',
                     borderLeft: c.firstOfLevel ? '2px solid #fff' : '1px solid rgba(255,255,255,.18)',
                   }}
                 >
+                  <button
+                    data-poste-menu
+                    title="Actions du poste : tout cocher / décocher, copier"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      setMenu((cur) =>
+                        cur && cur.fonctionId === c.fonction.id ? null : { fonctionId: c.fonction.id, x: r.left, y: r.bottom },
+                      );
+                    }}
+                    style={{
+                      width: 22,
+                      height: 16,
+                      lineHeight: '10px',
+                      padding: 0,
+                      color: '#fff',
+                      background: 'rgba(255,255,255,.16)',
+                      border: '1px solid rgba(255,255,255,.28)',
+                      borderRadius: 5,
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      fontWeight: 800,
+                    }}
+                  >
+                    ⋯
+                  </button>
                   <div
                     style={{
                       writingMode: 'vertical-rl',
@@ -337,6 +389,116 @@ export function MatrixTable({ roles, fonctions, items, perms, counts, onToggle }
       >
         {Row}
       </VariableSizeList>
+
+      {menu && (
+        <PosteMenu
+          menu={menu}
+          fonctions={fonctions}
+          onClose={() => setMenu(null)}
+          onSetAll={onSetAll}
+          onCopy={onCopy}
+        />
+      )}
+    </div>
+  );
+}
+
+function PosteMenu({
+  menu,
+  fonctions,
+  onClose,
+  onSetAll,
+  onCopy,
+}: {
+  menu: MenuState;
+  fonctions: Fonction[];
+  onClose: () => void;
+  onSetAll: (fonctionId: string, value: boolean) => void;
+  onCopy: (fromId: string, toId: string) => void;
+}) {
+  const current = fonctions.find((f) => f.id === menu.fonctionId);
+  const others = fonctions.filter((f) => f.id !== menu.fonctionId);
+  const W = 260;
+  const left = Math.max(8, Math.min(menu.x, window.innerWidth - W - 8));
+  const top = Math.min(menu.y + 6, window.innerHeight - 340);
+
+  const itemStyle: React.CSSProperties = {
+    display: 'block',
+    width: '100%',
+    textAlign: 'left',
+    fontSize: 12.5,
+    padding: '8px 12px',
+    background: 'transparent',
+    border: 'none',
+    borderRadius: 8,
+    cursor: 'pointer',
+    color: theme.color.ink,
+  };
+
+  return (
+    <div
+      data-poste-menu
+      style={{
+        position: 'fixed',
+        left,
+        top,
+        width: W,
+        background: '#fff',
+        border: `1px solid ${theme.color.border}`,
+        borderRadius: 12,
+        boxShadow: theme.shadow.card,
+        zIndex: 60,
+        padding: 8,
+      }}
+    >
+      <div style={{ padding: '4px 12px 8px', borderBottom: `1px solid ${theme.color.sep}`, marginBottom: 6 }}>
+        <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.08em', color: theme.color.muted2, fontWeight: 700 }}>Poste</div>
+        <div style={{ fontSize: 13.5, fontWeight: 700 }}>{current?.libelle ?? menu.fonctionId}</div>
+      </div>
+
+      <button
+        style={itemStyle}
+        onMouseEnter={(e) => (e.currentTarget.style.background = theme.color.canvas)}
+        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+        onClick={() => {
+          onSetAll(menu.fonctionId, true);
+          onClose();
+        }}
+      >
+        ✓ Tout cocher <span style={{ color: theme.color.muted2 }}>(toute la grille)</span>
+      </button>
+      <button
+        style={itemStyle}
+        onMouseEnter={(e) => (e.currentTarget.style.background = theme.color.canvas)}
+        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+        onClick={() => {
+          onSetAll(menu.fonctionId, false);
+          onClose();
+        }}
+      >
+        ✗ Tout décocher
+      </button>
+
+      <div style={{ padding: '10px 12px 4px', fontSize: 11, textTransform: 'uppercase', letterSpacing: '.08em', color: theme.color.muted2, fontWeight: 700 }}>
+        Copier les autorisations depuis
+      </div>
+      <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+        {others.length === 0 && <div style={{ padding: '6px 12px', fontSize: 12.5, color: theme.color.muted2 }}>Aucun autre poste.</div>}
+        {others.map((f) => (
+          <button
+            key={f.id}
+            style={itemStyle}
+            onMouseEnter={(e) => (e.currentTarget.style.background = theme.color.canvas)}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            onClick={() => {
+              onCopy(f.id, menu.fonctionId);
+              onClose();
+            }}
+          >
+            {f.libelle}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

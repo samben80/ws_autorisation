@@ -55,6 +55,10 @@ interface MatrixState {
   clearAll: () => void;
   countFor: (fonctionId: string) => number;
 
+  // Actions en masse par poste (colonne)
+  setAllForFonction: (fonctionId: string, value: boolean) => void;
+  copyFonctionPerms: (fromId: string, toId: string) => void;
+
   // CRUD Rôles
   upsertRole: (role: Role) => void;
   removeRole: (roleId: string) => void;
@@ -148,6 +152,39 @@ export const useMatrixStore = create<MatrixState>((set, get) => {
       let n = 0;
       for (const k in perms) if (perms[k] && k.startsWith(prefix)) n++;
       return n;
+    },
+
+    setAllForFonction(fonctionId, value) {
+      set((state) => {
+        const prefix = fonctionId + '|';
+        const perms: PermMap = {};
+        // conserver les autres postes
+        for (const k in state.perms) if (state.perms[k] && !k.startsWith(prefix)) perms[k] = true;
+        // (dé)cocher tout le catalogue pour ce poste
+        if (value) {
+          for (const [objet, intitule, fonction] of CATALOG) perms[permKey(fonctionId, objet, intitule, fonction)] = true;
+        }
+        return { perms };
+      });
+      persist();
+    },
+
+    copyFonctionPerms(fromId, toId) {
+      if (fromId === toId) return;
+      set((state) => {
+        const toPrefix = toId + '|';
+        const perms: PermMap = {};
+        // repartir des autres postes (on remplace entièrement la cible)
+        for (const k in state.perms) if (state.perms[k] && !k.startsWith(toPrefix)) perms[k] = true;
+        // recopier chaque autorisation de la source sur la cible
+        for (const [objet, intitule, fonction] of CATALOG) {
+          if (state.perms[permKey(fromId, objet, intitule, fonction)]) {
+            perms[permKey(toId, objet, intitule, fonction)] = true;
+          }
+        }
+        return { perms };
+      });
+      persist();
     },
 
     upsertRole(role) {

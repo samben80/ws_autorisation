@@ -6,8 +6,19 @@ import { Button } from '../components/ui/Shell';
 import { theme } from '../styles/theme';
 
 export function MatrixPage() {
-  const { roles, fonctions, perms, ready, source, persisting, toggle, resetReferenceDefaults, clearAll } =
-    useMatrixStore();
+  const {
+    roles,
+    fonctions,
+    perms,
+    ready,
+    source,
+    persisting,
+    toggle,
+    resetReferenceDefaults,
+    clearAll,
+    setAllForFonction,
+    copyFonctionPerms,
+  } = useMatrixStore();
   const [objet, setObjet] = useState('ACTION');
   const [q, setQ] = useState('');
 
@@ -86,7 +97,16 @@ export function MatrixPage() {
       {/* TABLE */}
       <div style={{ maxWidth: 1640, margin: '0 auto', background: '#fff', border: `1px solid ${theme.color.border}`, borderRadius: 14, boxShadow: theme.shadow.card, overflow: 'hidden' }}>
         {ready ? (
-          <MatrixTable roles={roles} fonctions={fonctions} items={items} perms={perms} counts={counts} onToggle={toggle} />
+          <MatrixTable
+            roles={roles}
+            fonctions={fonctions}
+            items={items}
+            perms={perms}
+            counts={counts}
+            onToggle={toggle}
+            onSetAll={setAllForFonction}
+            onCopy={copyFonctionPerms}
+          />
         ) : (
           <div style={{ padding: 60, textAlign: 'center', color: theme.color.muted2, fontSize: 14 }}>
             Chargement du catalogue Wavesoft…
