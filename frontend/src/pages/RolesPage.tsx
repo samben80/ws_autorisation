@@ -20,6 +20,7 @@ export function RolesPage() {
   const [editFonction, setEditFonction] = useState<Fonction | null>(null);
 
   const ordered = [...roles].sort((a, b) => a.ordre - b.ordre);
+  const nameById = new Map(fonctions.map((f) => [f.id, f.libelle]));
 
   return (
     <div style={{ padding: '36px 34px 60px', fontFamily: theme.font, color: theme.color.ink }}>
@@ -68,7 +69,12 @@ export function RolesPage() {
                 {fs.length === 0 && <div style={{ padding: '14px 18px', color: theme.color.muted2, fontSize: 13 }}>Aucune fonction.</div>}
                 {fs.map((f) => (
                   <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 18px', borderTop: `1px solid ${theme.color.sep}` }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, minWidth: 200 }}>{f.libelle}</div>
+                    <div style={{ minWidth: 200 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>{f.libelle}</div>
+                      <div style={{ fontSize: 11.5, color: theme.color.muted2 }}>
+                        {f.parentId && nameById.has(f.parentId) ? `↳ ${nameById.get(f.parentId)}` : '↳ sommet'}
+                      </div>
+                    </div>
                     <div style={{ fontSize: 12.5, color: theme.color.muted, flex: 1 }}>{f.personnes.join(' · ')}</div>
                     <span style={{ fontSize: 11.5, color: theme.color.muted2, background: theme.color.canvas, borderRadius: 999, padding: '2px 9px' }}>
                       {countFor(f.id)} autor.
@@ -90,6 +96,7 @@ export function RolesPage() {
         <FonctionModal
           fonction={editFonction}
           roles={ordered}
+          fonctions={fonctions}
           onClose={() => setEditFonction(null)}
           onSave={(f) => {
             upsertFonction(f);
@@ -154,14 +161,31 @@ function RoleModal({ role, onClose, onSave }: { role: Role; onClose: () => void;
   );
 }
 
+/** Descendants d'une fonction (pour interdire les cycles de rattachement). */
+function descendantsOf(all: Fonction[], id: string): Set<string> {
+  const out = new Set<string>();
+  const walk = (pid: string) => {
+    for (const f of all) {
+      if (f.parentId === pid && !out.has(f.id)) {
+        out.add(f.id);
+        walk(f.id);
+      }
+    }
+  };
+  walk(id);
+  return out;
+}
+
 function FonctionModal({
   fonction,
   roles,
+  fonctions,
   onClose,
   onSave,
 }: {
   fonction: Fonction;
   roles: Role[];
+  fonctions: Fonction[];
   onClose: () => void;
   onSave: (f: Fonction) => void;
 }) {
@@ -169,6 +193,11 @@ function FonctionModal({
   const [roleId, setRoleId] = useState(fonction.roleId);
   const [code, setCode] = useState(fonction.code);
   const [personnes, setPersonnes] = useState(fonction.personnes.join(', '));
+  const [parentId, setParentId] = useState<string>(fonction.parentId ?? '');
+
+  // Parents possibles : toutes les autres fonctions, hors soi-même et ses descendants.
+  const forbidden = descendantsOf(fonctions, fonction.id);
+  const parentOptions = fonctions.filter((f) => f.id !== fonction.id && !forbidden.has(f.id));
   return (
     <Overlay>
       <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 800 }}>Fonction</h2>
@@ -179,6 +208,15 @@ function FonctionModal({
         {roles.map((r) => (
           <option key={r.id} value={r.id}>
             {r.libelle}
+          </option>
+        ))}
+      </select>
+      <label style={label}>Rattaché à (responsable hiérarchique)</label>
+      <select style={field} value={parentId} onChange={(e) => setParentId(e.target.value)}>
+        <option value="">— Aucun (sommet de l'organigramme)</option>
+        {parentOptions.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.libelle}
           </option>
         ))}
       </select>
@@ -195,6 +233,7 @@ function FonctionModal({
               ...fonction,
               libelle,
               roleId,
+              parentId: parentId || null,
               code: (code || slug(libelle) || fonction.id).toUpperCase(),
               personnes: personnes
                 .split(',')

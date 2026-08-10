@@ -18,6 +18,8 @@ export interface Fonction {
   code: string;
   libelle: string;
   personnes: string[];
+  /** Fonction supérieure hiérarchique (à qui ce poste reporte). null/absent = sommet. */
+  parentId?: string | null;
 }
 
 /**

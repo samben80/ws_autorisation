@@ -6,7 +6,7 @@ import { CATALOG } from '../data/catalog';
 import { SEED_ROLES, SEED_FONCTIONS, SEED_REFERENCE_FONCTION_ID } from '../data/seed';
 import { api, type StateSnapshot } from './api';
 
-const LS_KEY = 'wavesoft-matrix-v2';
+const LS_KEY = 'wavesoft-matrix-v3';
 
 export function permKey(fonctionId: string, objet: string, intitule: string, fonction: string): string {
   return `${fonctionId}|${objet}|${intitule}|${fonction}`;
@@ -184,7 +184,13 @@ export const useMatrixStore = create<MatrixState>((set, get) => {
         const prefix = fonctionId + '|';
         const perms: PermMap = {};
         for (const k in state.perms) if (!k.startsWith(prefix)) perms[k] = state.perms[k];
-        return { fonctions: state.fonctions.filter((f) => f.id !== fonctionId), perms };
+        // reparentage : les enfants remontent au parent du supprimé
+        const removed = state.fonctions.find((f) => f.id === fonctionId);
+        const newParent = removed?.parentId ?? null;
+        const fonctions = state.fonctions
+          .filter((f) => f.id !== fonctionId)
+          .map((f) => (f.parentId === fonctionId ? { ...f, parentId: newParent } : f));
+        return { fonctions, perms };
       });
       persist();
     },

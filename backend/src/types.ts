@@ -14,6 +14,7 @@ export interface Fonction {
   code: string;
   libelle: string;
   personnes: string[];
+  parentId?: string | null;
 }
 
 export interface Autorisation {

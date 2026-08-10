@@ -8,23 +8,26 @@ export const SEED_ROLES: Role[] = [
 ];
 
 export const SEED_FONCTIONS: Fonction[] = [
-  { id: 'dg', roleId: 'dir', code: 'DG', libelle: 'Directeur Général', personnes: ['Rachid Hemmouda'] },
+  // Sommet
+  { id: 'dg', roleId: 'dir', code: 'DG', libelle: 'Directeur Général', personnes: ['Rachid Hemmouda'], parentId: null },
 
-  { id: 'r-com', roleId: 'enc', code: 'R-COM', libelle: 'Resp. commerciale', personnes: ['Chaymae Bahraoui'] },
-  { id: 'r-ach', roleId: 'enc', code: 'R-ACH', libelle: 'Resp. service achats', personnes: ['Fatima Ezzehra Ouahrour'] },
-  { id: 'r-fin', roleId: 'enc', code: 'R-FIN', libelle: 'Dir. financière & admin.', personnes: ['Meryam El Gualloussi'] },
-  { id: 'r-dig', roleId: 'enc', code: 'R-DIG', libelle: 'Digital Marketeur', personnes: ['Haytam Bouhdidi'] },
-  { id: 'r-mar', roleId: 'enc', code: 'R-MAR', libelle: 'Resp. service marché', personnes: ['Rajae Said'] },
+  // Encadrement (N-1) — reporte au DG
+  { id: 'r-com', roleId: 'enc', code: 'R-COM', libelle: 'Responsable commerciale', personnes: ['Chaymae Bahraoui'], parentId: 'dg' },
+  { id: 'r-ach', roleId: 'enc', code: 'R-ACH', libelle: 'Responsable service achats', personnes: ['Fatima Ezzehra Ouahrour'], parentId: 'dg' },
+  { id: 'r-fin', roleId: 'enc', code: 'R-FIN', libelle: 'Directrice financière et administrative', personnes: ['Meryam El Gualloussi'], parentId: 'dg' },
+  { id: 'r-dig', roleId: 'enc', code: 'R-DIG', libelle: 'Digital Marketeur', personnes: ['Haytam Bouhdidi'], parentId: 'dg' },
+  { id: 'r-mar', roleId: 'enc', code: 'R-MAR', libelle: 'Responsable service marché', personnes: ['Rajae Said'], parentId: 'dg' },
 
-  { id: 'o-terrain', roleId: 'ope', code: 'O-TERRAIN', libelle: 'Commerciaux terrain', personnes: ['Tarik El Mernissi', 'Ayoub Jkhikh'] },
-  { id: 'o-caisse', roleId: 'ope', code: 'O-CAISSE', libelle: 'Caissière permanente', personnes: ['Nissrine Rahmouni', 'Iqbal Chfarji', 'Amal Chehboun', 'Tarik Hamdan', 'Oumaima Boudaya'] },
-  { id: 'o-magasin', roleId: 'ope', code: 'O-MAGASIN', libelle: 'Magasinier', personnes: ['Ilyas Bouhati'] },
-  { id: 'o-assist', roleId: 'ope', code: 'O-ASSIST', libelle: 'Assistantes achats', personnes: ['Houda Elgraoui', 'Sara Elmoudni'] },
-  { id: 'o-stock', roleId: 'ope', code: 'O-STOCK', libelle: 'Gestionnaire de stock', personnes: ['Ouassima Blal'] },
-  { id: 'o-compta', roleId: 'ope', code: 'O-COMPTA', libelle: 'Service Comptabilité', personnes: ['Fatima Tribach', 'Khadija Mharzi', 'Hamidi Chaimae', 'Sanae Kasmi', 'Aicha Elhardouf'] },
-  { id: 'o-factur', roleId: 'ope', code: 'O-FACTUR', libelle: 'Agentes de facturation', personnes: ['Fadoua Azzioui', 'Majda Salmane'] },
-  { id: 'o-confirm', roleId: 'ope', code: 'O-CONFIRM', libelle: 'Agente de confirmation', personnes: ['Chaymae Akchikach'] },
-  { id: 'o-adjoint', roleId: 'ope', code: 'O-ADJOINT', libelle: 'Adjointe resp. marché', personnes: ['Fatima Ichirou'] },
+  // Opérationnels (N-2) — reportent à leur responsable
+  { id: 'o-terrain', roleId: 'ope', code: 'O-TERRAIN', libelle: 'Commerciaux sur terrain', personnes: ['Tarik El Mernissi', 'Ayoub Jkhikh'], parentId: 'r-com' },
+  { id: 'o-caisse', roleId: 'ope', code: 'O-CAISSE', libelle: 'Caissière permanente', personnes: ['Nissrine Rahmouni', 'Iqbal Chfarji', 'Amal Chehboun', 'Tarik Hamdan', 'Oumaima Boudaya'], parentId: 'r-com' },
+  { id: 'o-magasin', roleId: 'ope', code: 'O-MAGASIN', libelle: 'Magasinier', personnes: ['Ilyas Bouhati'], parentId: 'r-com' },
+  { id: 'o-assist', roleId: 'ope', code: 'O-ASSIST', libelle: 'Assistantes achats', personnes: ['Houda Elgraoui', 'Sara Elmoudni'], parentId: 'r-ach' },
+  { id: 'o-stock', roleId: 'ope', code: 'O-STOCK', libelle: 'Gestionnaire de stock', personnes: ['Ouassima Blal'], parentId: 'r-ach' },
+  { id: 'o-compta', roleId: 'ope', code: 'O-COMPTA', libelle: 'Service Comptabilité', personnes: ['Fatima Tribach', 'Khadija Mharzi', 'Hamidi Chaimae', 'Sanae Kasmi', 'Aicha Elhardouf'], parentId: 'r-fin' },
+  { id: 'o-factur', roleId: 'ope', code: 'O-FACTUR', libelle: 'Agentes de facturation', personnes: ['Fadoua Azzioui', 'Majda Salmane'], parentId: 'r-fin' },
+  { id: 'o-confirm', roleId: 'ope', code: 'O-CONFIRM', libelle: 'Agente de confirmation', personnes: ['Chaymae Akchikach'], parentId: 'r-dig' },
+  { id: 'o-adjoint', roleId: 'ope', code: 'O-ADJOINT', libelle: 'Adjointe · Responsable service marché', personnes: ['Fatima Ichirou'], parentId: 'r-mar' },
 ];
 
 /** Fonction pré-remplie par le profil de référence « STOCK » (colonne ref du catalogue). */
