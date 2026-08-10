@@ -48,3 +48,45 @@ export interface ProfilExport {
   nom: string;
   autorisations: Autorisation[];
 }
+
+// ---------------------------------------------------------------------------
+// Multi-dossiers & authentification
+// ---------------------------------------------------------------------------
+
+/** Données métier propres à un dossier client (sa matrice complète). */
+export interface DossierData {
+  roles: Role[];
+  fonctions: Fonction[];
+  perms: PermMap;
+}
+
+/** Dossier client : espace isolé possédant sa propre matrice. */
+export interface Dossier {
+  id: string;
+  nom: string; // nom du dossier / raison sociale
+  client: string; // libellé client (ex. « SA TOYMART »)
+  data: DossierData;
+}
+
+/** Type de compte applicatif (à ne pas confondre avec le « rôle » Wavesoft = niveau). */
+export type UserType = 'admin' | 'consultant' | 'client';
+
+/** Utilisateur de l'application. */
+export interface User {
+  id: string;
+  nom: string;
+  email: string;
+  /** ⚠ Prototype : mot de passe en clair. En production → hash côté backend. */
+  password: string;
+  type: UserType;
+  /** Dossiers accessibles (ignoré pour l'admin qui voit tout ; 1 seul pour un client). */
+  dossierIds: string[];
+}
+
+/** État applicatif persistané (hors matrices, portées par les dossiers). */
+export interface AppState {
+  users: User[];
+  dossiers: Dossier[];
+  currentUserId: string | null;
+  activeDossierId: string | null;
+}

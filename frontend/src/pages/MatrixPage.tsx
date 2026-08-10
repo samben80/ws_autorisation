@@ -3,6 +3,7 @@ import { useMatrixStore } from '../store/useMatrixStore';
 import { objetOptions, filterCatalog, buildItems } from '../data/catalogHelpers';
 import { MatrixTable } from '../components/Matrix/MatrixTable';
 import { Button } from '../components/ui/Shell';
+import { NoDossier } from '../components/ui/NoDossier';
 import { theme } from '../styles/theme';
 
 export function MatrixPage() {
@@ -18,6 +19,7 @@ export function MatrixPage() {
     clearAll,
     setAllForFonction,
     copyFonctionPerms,
+    activeDossierId,
   } = useMatrixStore();
   const [objet, setObjet] = useState('ACTION');
   const [q, setQ] = useState('');
@@ -40,6 +42,8 @@ export function MatrixPage() {
 
   const totalAuth = useMemo(() => Object.keys(perms).filter((k) => perms[k]).length, [perms]);
   const rowCount = items.filter((i) => i.kind === 'row').length;
+
+  if (!activeDossierId) return <NoDossier />;
 
   return (
     <div style={{ padding: '36px 34px 60px', fontFamily: theme.font, color: theme.color.ink }}>

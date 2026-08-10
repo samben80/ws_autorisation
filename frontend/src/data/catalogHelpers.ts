@@ -1,6 +1,30 @@
 // Dérivations sur le catalogue Wavesoft pour la matrice.
 import { CATALOG } from './catalog';
-import type { CatalogEntry } from '../types';
+import { SEED_ROLES, SEED_FONCTIONS, SEED_REFERENCE_FONCTION_ID } from './seed';
+import type { CatalogEntry, DossierData, PermMap } from '../types';
+
+/** Clé plate d'une autorisation. */
+export function permKey(fonctionId: string, objet: string, intitule: string, fonction: string): string {
+  return `${fonctionId}|${objet}|${intitule}|${fonction}`;
+}
+
+/** Autorisations par défaut : recopie le drapeau `ref` du catalogue sur la fonction de référence. */
+export function buildReferenceDefaults(): PermMap {
+  const perms: PermMap = {};
+  for (const [objet, intitule, fonction, ref] of CATALOG) {
+    if (ref) perms[permKey(SEED_REFERENCE_FONCTION_ID, objet, intitule, fonction)] = true;
+  }
+  return perms;
+}
+
+/** Données initiales d'un nouveau dossier : seed rôles/fonctions clonés + autorisations de référence. */
+export function buildDossierSeedData(withReferenceDefaults = true): DossierData {
+  return {
+    roles: structuredClone(SEED_ROLES),
+    fonctions: structuredClone(SEED_FONCTIONS),
+    perms: withReferenceDefaults ? buildReferenceDefaults() : {},
+  };
+}
 
 /** Liste ordonnée et dédupliquée des objets. */
 export function objetOptions(): { v: string; l: string }[] {

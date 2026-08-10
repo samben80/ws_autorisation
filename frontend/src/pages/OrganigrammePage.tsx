@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMatrixStore } from '../store/useMatrixStore';
+import { NoDossier } from '../components/ui/NoDossier';
 import { theme } from '../styles/theme';
 import type { Fonction } from '../types';
 
@@ -12,6 +13,7 @@ function childrenOf(fonctions: Fonction[], parentId: string | null): Fonction[] 
 
 export function OrganigrammePage() {
   const { fonctions } = useMatrixStore();
+  const activeDossierId = useMatrixStore((s) => s.activeDossierId);
   const canvasRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [paths, setPaths] = useState<string[]>([]);
@@ -94,6 +96,8 @@ export function OrganigrammePage() {
       window.removeEventListener('resize', onResize);
     };
   }, [compute]);
+
+  if (!activeDossierId) return <NoDossier />;
 
   return (
     <div style={{ padding: '48px 34px 72px', fontFamily: theme.font, color: theme.color.ink, overflowX: 'auto' }}>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMatrixStore } from '../store/useMatrixStore';
 import { Button } from '../components/ui/Shell';
+import { NoDossier } from '../components/ui/NoDossier';
 import { theme } from '../styles/theme';
 import type { Fonction, NiveauCode, Role } from '../types';
 
@@ -19,8 +20,11 @@ export function RolesPage() {
   const [editRole, setEditRole] = useState<Role | null>(null);
   const [editFonction, setEditFonction] = useState<Fonction | null>(null);
 
+  const activeDossierId = useMatrixStore((s) => s.activeDossierId);
   const ordered = [...roles].sort((a, b) => a.ordre - b.ordre);
   const nameById = new Map(fonctions.map((f) => [f.id, f.libelle]));
+
+  if (!activeDossierId) return <NoDossier />;
 
   return (
     <div style={{ padding: '36px 34px 60px', fontFamily: theme.font, color: theme.color.ink }}>

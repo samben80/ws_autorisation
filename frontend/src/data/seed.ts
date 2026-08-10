@@ -1,5 +1,5 @@
 // Seed rôles / fonctions issu de l'organigramme (cf. Organigramme.dc.html & README).
-import type { Role, Fonction } from '../types';
+import type { Role, Fonction, User } from '../types';
 
 export const SEED_ROLES: Role[] = [
   { id: 'dir', code: 'dir', libelle: 'Direction', ordre: 0 },
@@ -32,3 +32,17 @@ export const SEED_FONCTIONS: Fonction[] = [
 
 /** Fonction pré-remplie par le profil de référence « STOCK » (colonne ref du catalogue). */
 export const SEED_REFERENCE_FONCTION_ID = 'o-stock';
+
+/** Dossier de démonstration (client de référence du bundle). */
+export const SEED_DOSSIER_ID = 'dossier-toymart';
+export const SEED_DOSSIER = { id: SEED_DOSSIER_ID, nom: 'SA TOYMART', client: 'SA TOYMART' };
+
+/**
+ * Comptes de démonstration. ⚠ Mots de passe en clair — prototype uniquement.
+ * En production : authentification + hachage côté backend.
+ */
+export const SEED_USERS: User[] = [
+  { id: 'u-admin', nom: 'Admin Wavesoft', email: 'admin@wavesoft.ma', password: 'admin', type: 'admin', dossierIds: [] },
+  { id: 'u-consultant', nom: 'Consultant Wavesoft', email: 'consultant@wavesoft.ma', password: 'consultant', type: 'consultant', dossierIds: [SEED_DOSSIER_ID] },
+  { id: 'u-client', nom: 'Client TOYMART', email: 'client@toymart.ma', password: 'client', type: 'client', dossierIds: [SEED_DOSSIER_ID] },
+];
