@@ -196,3 +196,31 @@ npm test               # tests du générateur SQL (vitest)
   matrice.
 - **Génération SQL** : module pur `buildSql(profil)` côté backend — noms de
   tables/colonnes en **placeholders à valider** contre le schéma Wavesoft réel.
+
+## Hébergement (consultable partout)
+
+L'interface est une **application statique** (aucun backend requis pour la
+consultation ; données en `localStorage` du navigateur). Trois options :
+
+### A. Artifact claude.ai (le plus rapide)
+```bash
+npm -w frontend run build:artifact   # → frontend/dist-standalone/artifact.html
+```
+Publier `artifact.html` comme Artifact → URL partageable immédiate. La page
+est autonome (JS/CSS/polices inlinés, 0 requête externe).
+
+### B. Hébergeur statique (URL publique permanente)
+```bash
+npm -w frontend run build            # → frontend/dist/
+```
+Déployer le dossier `frontend/dist/` sur Netlify, Vercel, GitHub Pages,
+Cloudflare Pages, ou tout serveur statique. Routeur en HashRouter → aucune
+règle de réécriture nécessaire.
+
+### ⚠ Limite importante (prototype)
+Les données (dossiers, utilisateurs, autorisations) et l'authentification
+sont **locales au navigateur** (`localStorage`) : elles ne sont **pas
+partagées** entre utilisateurs ni entre appareils, et les mots de passe sont
+en clair. Pour un usage multi-utilisateurs réel (données partagées, comptes
+sécurisés), déployer le **backend** (`backend/`) avec une vraie base et une
+authentification hachée, puis brancher le front dessus.
