@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="./wavesoft-catalog.js"></script>
+<style>
+  html,body{margin:0;padding:0}
+  *{box-sizing:border-box}
+  a{color:#5b82b0;text-decoration:none}
+  a:hover{color:#3f6796}
+  #wv-scroll::-webkit-scrollbar{height:14px;width:14px}
+  #wv-scroll::-webkit-scrollbar-thumb{background:#cfcabf;border-radius:7px;border:3px solid #fff}
+  #wv-scroll::-webkit-scrollbar-track{background:#f2efe8}
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#f6f4ef;padding:36px 34px 60px;font-family:'Hanken Grotesk',system-ui,-apple-system,sans-serif;color:#2b2a31">
+
+  <div style="max-width:1640px;margin:0 auto 22px">
+    <div style="font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#6d6a63;font-weight:600">ERP Wavesoft · Fiches profil</div>
+    <h1 style="font-size:30px;font-weight:800;letter-spacing:-.025em;margin:8px 0 6px">Matrice des autorisations</h1>
+    <p style="font-size:14px;color:#6d6a63;line-height:1.55;margin:0;max-width:960px">Grille native Wavesoft — <strong>Objet · Intitulé · Fonction</strong> — avec une colonne d'autorisation par poste, regroupées par niveau hiérarchique. Cochez la case pour autoriser la fonction dans le profil du poste. La colonne <strong>Gestionnaire de stock</strong> est pré-remplie d'après la fiche profil « STOCK » importée. Modifications enregistrées automatiquement.</p>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div style="max-width:1640px;margin:0 auto 16px;display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;justify-content:space-between">
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+      <label style="font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:#8a8780;font-weight:600">Objet</label>
+      <select onChange="{{ onObjet }}" value="{{ objet }}" style="font-family:inherit;font-size:13px;font-weight:600;color:#2b2a31;background:#fff;border:1px solid #ded9d0;border-radius:8px;padding:8px 12px;cursor:pointer;min-width:190px">
+        <sc-for list="{{ objetOptions }}" as="o" hint-placeholder-count="28">
+          <option value="{{ o.v }}">{{ o.l }}</option>
+        </sc-for>
+      </select>
+      <input value="{{ q }}" onChange="{{ onSearch }}" placeholder="Rechercher un intitulé / fonction…" style="font-family:inherit;font-size:13px;color:#2b2a31;background:#fff;border:1px solid #ded9d0;border-radius:8px;padding:8px 12px;min-width:240px">
+      <span style="font-size:12.5px;color:#8a8780">{{ countLabel }}</span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onClick="{{ resetDefaults }}" style="font-family:inherit;font-size:12.5px;font-weight:600;color:#2b2a31;background:#fff;border:1px solid #ded9d0;border-radius:8px;padding:8px 14px;cursor:pointer">Réinitialiser (profil STOCK)</button>
+      <button onClick="{{ clearAll }}" style="font-family:inherit;font-size:12.5px;font-weight:600;color:#8a4a42;background:#fff;border:1px solid #e6cdc8;border-radius:8px;padding:8px 14px;cursor:pointer">Tout décocher</button>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div style="max-width:1640px;margin:0 auto;background:#fff;border:1px solid #e8e4dc;border-radius:14px;box-shadow:0 1px 2px rgba(30,30,45,.05),0 12px 30px rgba(30,30,45,.06);overflow:hidden">
+    <sc-if value="{{ ready }}" hint-placeholder-val="{{ true }}">
+      <div id="wv-scroll" style="overflow:auto;max-height:78vh">
+        <table style="border-collapse:separate;border-spacing:0;font-size:12.5px">
+          <thead>
+            <tr>
+              <th rowspan="2" style="position:sticky;left:0;top:0;z-index:9;background:#26262b;color:#fff;text-align:left;padding:10px 12px;min-width:180px;width:180px;font-size:12px;font-weight:700">Intitulé</th>
+              <th rowspan="2" style="position:sticky;left:180px;top:0;z-index:9;background:#26262b;color:#fff;text-align:left;padding:10px 12px;min-width:150px;width:150px;font-size:12px;font-weight:700;border-right:2px solid #4a4a52">Fonction</th>
+              <sc-for list="{{ levelHeaders }}" as="lh" hint-placeholder-count="3">
+                <th colspan="{{ lh.count }}" style="{{ lh.style }}">{{ lh.l }}</th>
+              </sc-for>
+            </tr>
+            <tr>
+              <sc-for list="{{ posteHeaders }}" as="ph" hint-placeholder-count="15">
+                <th style="{{ ph.style }}" title="{{ ph.title }}">
+                  <div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:8px 0 6px">
+                    <div style="writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;font-size:11px;font-weight:600;flex:1;display:flex;align-items:center;line-height:1.1">{{ ph.l }}</div>
+                    <div style="font-size:9.5px;font-weight:700;background:rgba(255,255,255,.22);border-radius:8px;padding:1px 6px;margin-top:6px">{{ ph.count }}</div>
+                  </div>
+                </th>
+              </sc-for>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ tableRows }}" as="r" hint-placeholder-count="30">
+              <sc-if value="{{ r.isBand }}" hint-placeholder-val="{{ false }}">
+                <tr>
+                  <td colspan="{{ colSpanTotal }}" style="{{ r.style }}">{{ r.label }}</td>
+                </tr>
+              </sc-if>
+              <sc-if value="{{ r.isRow }}" hint-placeholder-val="{{ true }}">
+                <tr>
+                  <td style="{{ r.intStyle }}">{{ r.intitule }}</td>
+                  <td style="{{ r.foncStyle }}">{{ r.fonction }}</td>
+                  <sc-for list="{{ r.cells }}" as="cell" hint-placeholder-count="15">
+                    <td style="{{ cell.tdStyle }}">
+                      <div onClick="{{ cell.toggle }}" title="{{ cell.title }}" style="{{ cell.boxStyle }}">{{ cell.mark }}</div>
+                    </td>
+                  </sc-for>
+                </tr>
+              </sc-if>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+    </sc-if>
+    <sc-if value="{{ notReady }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:60px;text-align:center;color:#8a8780;font-size:14px">Chargement du catalogue Wavesoft…</div>
+    </sc-if>
+  </div>
+
+  <!-- LEGEND -->
+  <div style="max-width:1640px;margin:18px auto 0;display:flex;flex-wrap:wrap;gap:10px 26px;align-items:center;font-size:12.5px;color:#6d6a63">
+    <div style="display:flex;align-items:center;gap:8px"><span style="width:16px;height:16px;border-radius:4px;background:#3f7d4f;color:#fff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">✓</span> Fonction autorisée</div>
+    <div style="display:flex;align-items:center;gap:8px"><span style="width:16px;height:16px;border-radius:4px;background:#fff;border:1px solid #d3cfc6;display:inline-block"></span> Non autorisée</div>
+    <div style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:14px;border-radius:3px;background:#2a2a33;display:inline-block"></span> Direction</div>
+    <div style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:14px;border-radius:3px;background:#3f6796;display:inline-block"></span> Encadrement</div>
+    <div style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:14px;border-radius:3px;background:#567d49;display:inline-block"></span> Opérationnels</div>
+    <div style="margin-left:auto;font-size:12px;color:#a5a199">Le badge sous chaque poste indique le nombre de fonctions autorisées.</div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: 1700, &quot;height&quot;: 1000 }
+}">
+class Component extends DCLogic {
+  postes = [
+    { id:'dg',        level:'dir', l:'Directeur Général',                    people:'Rachid Hemmouda' },
+    { id:'r-com',     level:'enc', l:'Resp. commerciale',                    people:'Chaymae Bahraoui' },
+    { id:'r-ach',     level:'enc', l:'Resp. service achats',                 people:'Fatima Ezzehra Ouahrour' },
+    { id:'r-fin',     level:'enc', l:'Dir. financière & admin.',            people:'Meryam El Gualloussi' },
+    { id:'r-dig',     level:'enc', l:'Digital Marketeur',                    people:'Haytam Bouhdidi' },
+    { id:'r-mar',     level:'enc', l:'Resp. service marché',                people:'Rajae Said' },
+    { id:'o-terrain', level:'ope', l:'Commerciaux terrain',                 people:'Tarik El Mernissi · Ayoub Jkhikh' },
+    { id:'o-caisse',  level:'ope', l:'Caissière permanente',                people:'Nissrine Rahmouni · Iqbal Chfarji · Amal Chehboun · Tarik Hamdan · Oumaima Boudaya' },
+    { id:'o-magasin', level:'ope', l:'Magasinier',                          people:'Ilyas Bouhati' },
+    { id:'o-assist',  level:'ope', l:'Assistantes achats',                  people:'Houda Elgraoui · Sara Elmoudni' },
+    { id:'o-stock',   level:'ope', l:'Gestionnaire de stock',               people:'Ouassima Blal · (profil STOCK importé)' },
+    { id:'o-compta',  level:'ope', l:'Service Comptabilité',                people:'Fatima Tribach · Khadija Mharzi · Hamidi Chaimae · Sanae Kasmi · Aicha Elhardouf' },
+    { id:'o-factur',  level:'ope', l:'Agentes de facturation',             people:'Fadoua Azzioui · Majda Salmane' },
+    { id:'o-confirm', level:'ope', l:'Agente de confirmation',             people:'Chaymae Akchikach' },
+    { id:'o-adjoint', level:'ope', l:'Adjointe resp. marché',              people:'Fatima Ichirou' }
+  ];
+
+  levelMeta = {
+    dir: { l:'Direction',    head:'#2a2a33', col:'#faf9fc' },
+    enc: { l:'Encadrement',  head:'#3f6796', col:'#f6f9fc' },
+    ope: { l:'Opérationnels',head:'#567d49', col:'#f7fbf5' }
+  };
+
+  STORE = 'wavesoft-matrix-v1';
+  SEED = 'o-stock';
+  catalog = null;
+
+  state = { objet:'ACTION', q:'', perms:{}, ready:false };
+
+  componentDidMount(){ this._tries = 0; this.tryLoad(); }
+  tryLoad(){
+    if (window.WAVESOFT_CATALOG){
+      this.catalog = window.WAVESOFT_CATALOG;
+      this.setState({ perms: this.load(), ready: true });
+      return;
+    }
+    if (this._tries++ < 60) this._timer = setTimeout(() => this.tryLoad(), 100);
+  }
+  componentWillUnmount(){ clearTimeout(this._timer); }
+
+  key(pid, o, i, f){ return pid + '|' + o + '|' + i + '|' + f; }
+
+  buildDefaults(){
+    const p = {};
+    if (!this.catalog) return p;
+    for (const row of this.catalog){
+      if (row[3]) p[this.key(this.SEED, row[0], row[1], row[2])] = true;
+    }
+    return p;
+  }
+
+  load(){
+    try { const s = localStorage.getItem(this.STORE); if (s) return JSON.parse(s); } catch(e){}
+    return this.buildDefaults();
+  }
+  save(){ try { localStorage.setItem(this.STORE, JSON.stringify(this.state.perms)); } catch(e){} }
+
+  toggle(k){ this.setState(s => { const perms = Object.assign({}, s.perms); perms[k] = !perms[k]; return { perms }; }, () => this.save()); }
+  resetDefaults(){ this.setState({ perms: this.buildDefaults() }, () => this.save()); }
+  clearAll(){ this.setState({ perms: {} }, () => this.save()); }
+  onObjet(e){ this.setState({ objet: e.target.value }); }
+  onSearch(e){ this.setState({ q: e.target.value }); }
+
+  renderVals(){
+    const cat = this.catalog;
+    const ready = this.state.ready && !!cat;
+    if (!ready){
+      return { ready:false, notReady:true, tableRows:[], objetOptions:[{v:'all',l:'Tous les objets'}], levelHeaders:[], posteHeaders:[], colSpanTotal:2, objet:'all', q:'', countLabel:'',
+        onObjet:e=>this.onObjet(e), onSearch:e=>this.onSearch(e), resetDefaults:()=>this.resetDefaults(), clearAll:()=>this.clearAll() };
+    }
+    const perms = this.state.perms;
+    const objet = this.state.objet;
+    const q = (this.state.q || '').trim().toLowerCase();
+
+    // per-poste totals (over full catalog)
+    const totals = {};
+    for (const p of this.postes) totals[p.id] = 0;
+    for (const k in perms){ if (perms[k]){ const pid = k.slice(0, k.indexOf('|')); if (pid in totals) totals[pid]++; } }
+
+    const objetOptions = [{ v:'all', l:'Tous les objets' }];
+    let lastO = null;
+    for (const row of cat){ if (row[0] !== lastO){ lastO = row[0]; objetOptions.push({ v:row[0], l:row[0] }); } }
+
+    const filtered = cat.filter(r => (objet === 'all' || r[0] === objet) && (!q || (r[1] + ' ' + r[2] + ' ' + r[0]).toLowerCase().indexOf(q) !== -1));
+
+    // headers grouped by level
+    const levelHeaders = [];
+    ['dir','enc','ope'].forEach((lv, li) => {
+      const list = this.postes.filter(p => p.level === lv);
+      levelHeaders.push({ l: this.levelMeta[lv].l, count: list.length,
+        style: 'position:sticky;top:0;z-index:7;height:34px;background:' + this.levelMeta[lv].head + ';color:#fff;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:0 6px;border-left:' + (li===0?'2px solid #4a4a52':'2px solid rgba(255,255,255,.3)') });
+    });
+    const posteHeaders = this.postes.map((p, i) => {
+      const lm = this.levelMeta[p.level];
+      const firstOfLevel = i === 0 || this.postes[i-1].level !== p.level;
+      return { l: p.l, count: totals[p.id], title: p.l + ' — ' + p.people,
+        style: 'position:sticky;top:34px;z-index:6;background:' + lm.head + ';color:#fff;vertical-align:bottom;height:176px;min-width:36px;width:36px;border-left:' + (firstOfLevel?'2px solid #fff':'1px solid rgba(255,255,255,.18)') };
+    });
+
+    const colSpanTotal = 2 + this.postes.length;
+
+    const onBox = 'width:16px;height:16px;margin:0 auto;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:800;color:#fff;background:#3f7d4f;border:1px solid #3f7d4f';
+    const offBox = 'width:16px;height:16px;margin:0 auto;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;color:transparent;background:#fff;border:1px solid #d3cfc6';
+
+    const tableRows = [];
+    let curObj = null, curInt = null, intParity = 0, firstIntAfterBand = false;
+    for (const [o, i, f] of filtered){
+      if (o !== curObj){
+        curObj = o; curInt = null; firstIntAfterBand = true;
+        tableRows.push({ isBand:true, isRow:false, label:o,
+          style:'position:sticky;left:0;z-index:5;background:#2f2f37;color:#fff;font-weight:700;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;padding:8px 12px' });
+      }
+      const showInt = i !== curInt;
+      if (showInt){ curInt = i; intParity = firstIntAfterBand ? 0 : (intParity ^ 1); firstIntAfterBand = false; }
+      const rowBg = intParity ? '#faf8f4' : '#ffffff';
+      const topB = showInt ? 'border-top:2px solid #eae3d5;' : '';
+      const cells = this.postes.map((p, ci) => {
+        const k = this.key(p.id, o, i, f);
+        const on = !!perms[k];
+        const firstOfLevel = ci === 0 || this.postes[ci-1].level !== p.level;
+        const tdStyle = 'text-align:center;padding:3px 0;background:' + this.levelMeta[p.level].col + ';border-bottom:1px solid #f0ece3;border-left:' + (firstOfLevel?'2px solid #e6ddcd;':'1px solid #eee9df;') + topB;
+        return { mark: on ? '✓' : '', title: p.l + ' · ' + f, boxStyle: on ? onBox : offBox, tdStyle, toggle: () => this.toggle(k) };
+      });
+      tableRows.push({
+        isBand:false, isRow:true,
+        intitule: showInt ? i : '',
+        fonction: f,
+        intStyle: 'position:sticky;left:0;z-index:4;background:' + rowBg + ';padding:5px 12px;min-width:180px;width:180px;max-width:180px;border-bottom:1px solid #f0ece3;border-right:1px solid #ece7dd;font-weight:600;font-size:12px;color:#2b2a31;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + topB,
+        foncStyle: 'position:sticky;left:180px;z-index:4;background:' + rowBg + ';padding:5px 12px;min-width:150px;width:150px;border-bottom:1px solid #f0ece3;border-right:2px solid #e6ddcd;font-size:12px;color:#5a5852;white-space:nowrap;' + topB,
+        cells
+      });
+    }
+
+    const totalAuth = Object.keys(perms).filter(k => perms[k]).length;
+    const countLabel = filtered.length + ' fonction' + (filtered.length>1?'s':'') + ' affichées · ' + totalAuth + ' autorisation' + (totalAuth>1?'s':'') + ' au total';
+
+    return {
+      ready:true, notReady:false,
+      objet, q, objetOptions, levelHeaders, posteHeaders, colSpanTotal, tableRows, countLabel,
+      onObjet:e=>this.onObjet(e), onSearch:e=>this.onSearch(e),
+      resetDefaults:()=>this.resetDefaults(), clearAll:()=>this.clearAll()
+    };
+  }
+}
+</script>
+</body>
+</html>
