@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import { Shell } from './components/ui/Shell';
 import { MatrixPage } from './pages/MatrixPage';
 import { RolesPage } from './pages/RolesPage';
@@ -13,7 +13,7 @@ export default function App() {
   }, [init]);
 
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Shell>
         <Routes>
           <Route path="/" element={<MatrixPage />} />
@@ -21,6 +21,6 @@ export default function App() {
           <Route path="/organigramme" element={<OrganigrammePage />} />
         </Routes>
       </Shell>
-    </BrowserRouter>
+    </HashRouter>
   );
 }

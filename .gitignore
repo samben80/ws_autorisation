@@ -16,3 +16,6 @@ backend/data/
 
 # Build info TypeScript
 *.tsbuildinfo
+
+# Build autonome (single-file)
+frontend/dist-standalone/
