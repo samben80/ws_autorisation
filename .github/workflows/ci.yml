@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test:
+    name: Typecheck · Tests · Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install (workspaces)
+        run: npm ci
+
+      - name: Typecheck frontend
+        run: npm -w frontend run typecheck
+
+      - name: Typecheck backend
+        run: npm -w backend run typecheck
+
+      - name: Tests backend
+        run: npm -w backend test
+
+      - name: Build frontend
+        run: npm -w frontend run build
+
+      - name: Build backend
+        run: npm -w backend run build

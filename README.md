@@ -323,3 +323,22 @@ fly deploy
 > Sans volume, les données seraient perdues à chaque redéploiement.
 > Au premier démarrage, la base est seedée (dossier SA TOYMART + 3 comptes) —
 > **changez les mots de passe de démonstration** avant une mise en production.
+
+## Intégration continue (GitHub Actions)
+
+- **`.github/workflows/ci.yml`** — à chaque push / PR : typecheck (front +
+  back), tests backend, build front + back.
+- **`.github/workflows/docker.yml`** — sur la branche par défaut et les tags
+  `v*` : build et **push de l'image** sur GitHub Container Registry
+  (`ghcr.io/<owner>/ws_autorisation`). Aucun secret à créer (utilise
+  `GITHUB_TOKEN`) ; déclenchable aussi manuellement (workflow_dispatch).
+
+Déployer l'image publiée :
+```bash
+docker run -d -p 8787:8787 \
+  -e JWT_SECRET=$(openssl rand -hex 32) \
+  -v wavesoft-data:/app/backend/data \
+  ghcr.io/samben80/ws_autorisation:latest
+```
+> Après le premier push sur la branche par défaut, rendez le package GHCR
+> public (ou authentifiez `docker login ghcr.io`) selon vos besoins.
