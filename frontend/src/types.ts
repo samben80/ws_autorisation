@@ -90,3 +90,19 @@ export interface AppState {
   currentUserId: string | null;
   activeDossierId: string | null;
 }
+
+/** Utilisateur tel qu'exposé par l'API (sans mot de passe). */
+export interface PublicUser {
+  id: string;
+  nom: string;
+  email: string;
+  type: UserType;
+  dossierIds: string[];
+}
+
+/** Dossier (métadonnées seules, sans la matrice). */
+export interface DossierMeta {
+  id: string;
+  nom: string;
+  client: string;
+}

@@ -224,3 +224,63 @@ partagées** entre utilisateurs ni entre appareils, et les mots de passe sont
 en clair. Pour un usage multi-utilisateurs réel (données partagées, comptes
 sécurisés), déployer le **backend** (`backend/`) avec une vraie base et une
 authentification hachée, puis brancher le front dessus.
+
+---
+
+# Backend full-stack (auth + base partagée)
+
+Le backend fournit une **authentification sécurisée** et une **base partagée**
+(SQLite) pour un usage multi-utilisateurs réel.
+
+## Stack
+- **Express** (TypeScript, ESM), **SQLite** via `better-sqlite3`.
+- **Auth** : mots de passe hachés (`bcryptjs`), sessions par **jeton JWT**
+  (`jsonwebtoken`, en-tête `Authorization: Bearer`).
+- **Contrôle d'accès** : middlewares `requireAuth` / `requireAdmin` ;
+  vérification par dossier (un client n'accède qu'à ses dossiers).
+
+## Schéma (SQLite)
+`users` (id, nom, email unique, password_hash, type) · `dossiers`
+(id, nom, client, data JSON) · `user_dossiers` (liaison accès).
+La matrice d'un dossier est stockée en JSON dans `dossiers.data`.
+
+## Endpoints
+```
+POST   /api/auth/login          { email, password } → { token, user }
+GET    /api/auth/me             → { user }                    (auth)
+GET    /api/users              → { users }                    (admin)
+POST   /api/users              créer                          (admin)
+PUT    /api/users/:id          modifier                       (admin)
+DELETE /api/users/:id          supprimer                      (admin)
+GET    /api/dossiers           → dossiers accessibles         (auth)
+POST   /api/dossiers           créer                          (admin)
+PUT    /api/dossiers/:id       renommer                       (admin)
+DELETE /api/dossiers/:id       supprimer                      (admin)
+GET    /api/dossiers/:id/data  → matrice du dossier           (accès dossier)
+PUT    /api/dossiers/:id/data  enregistrer la matrice         (accès dossier)
+POST   /api/sql/generate       → { sql }                      (auth)
+```
+
+## Configuration (`backend/.env`)
+Voir `backend/.env.example` : `JWT_SECRET` (obligatoire en prod),
+`JWT_EXPIRES`, `PORT`, `DB_PATH`. La base est créée et **seedée** au premier
+démarrage (dossier SA TOYMART + 3 comptes de démo).
+
+## Démarrage
+```bash
+npm install
+JWT_SECRET=... npm -w backend run dev     # API :8787 (SQLite: backend/data/)
+npm -w frontend run dev                    # UI :5173 (proxy /api → :8787)
+```
+
+## Front connecté à l'API
+Le store **auto-détecte** le backend au démarrage (`GET /api/health`) :
+- backend joignable → **mode API** (auth + base partagée) ;
+- sinon → **mode local** (localStorage + seed), utilisé par la démo autonome.
+
+Pour builder le front vers une API distante :
+```bash
+VITE_API_URL=https://api.exemple.ma/api npm -w frontend run build
+```
+Ou servir front + backend derrière le même domaine avec `/api` proxifié
+vers le backend (aucune variable nécessaire, `/api` par défaut).

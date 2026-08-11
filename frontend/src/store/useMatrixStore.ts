@@ -1,17 +1,20 @@
 // Store global (Zustand) : authentification, dossiers clients multi-tenant,
-// et matrice (rôles, fonctions, autorisations) du dossier ACTIF.
+// et matrice du dossier ACTIF.
 //
-// Persistance : localStorage (prototype). En production → backend + auth hachée.
+// Deux modes, auto-détectés au démarrage :
+//  - 'api'   : backend disponible (auth JWT + base partagée). Source de vérité.
+//  - 'local' : hors-ligne (localStorage + seed) — utilisé pour la démo autonome.
 import { create } from 'zustand';
-import type { Role, Fonction, PermMap, User, Dossier, AppState, UserType } from '../types';
+import type { Role, Fonction, PermMap, User, Dossier, AppState, UserType, DossierData, PublicUser } from '../types';
 import { CATALOG } from '../data/catalog';
 import { SEED_USERS, SEED_DOSSIER } from '../data/seed';
 import { permKey, buildReferenceDefaults, buildDossierSeedData } from '../data/catalogHelpers';
+import { apiClient, setAuthToken } from './apiClient';
 
 export { permKey };
 
 const LS_KEY = 'wavesoft-app-v4';
-
+const TOKEN_KEY = 'wavesoft-token';
 const uid = (p: string) => `${p}-${Math.random().toString(36).slice(2, 9)}`;
 
 function loadApp(): AppState | null {
@@ -23,7 +26,6 @@ function loadApp(): AppState | null {
   }
   return null;
 }
-
 function seedApp(): AppState {
   return {
     users: structuredClone(SEED_USERS),
@@ -40,41 +42,41 @@ export function accessibleDossiers(user: User | null, dossiers: Dossier[]): Doss
   return dossiers.filter((d) => user.dossierIds.includes(d.id));
 }
 
+/** Convertit un utilisateur API en User interne (sans mot de passe). */
+function toUser(p: PublicUser): User {
+  return { ...p, password: '' };
+}
+const emptyData: DossierData = { roles: [], fonctions: [], perms: {} };
+
 interface StoreState {
-  // Auth & dossiers
+  mode: 'api' | 'local' | null;
   users: User[];
   dossiers: Dossier[];
   currentUserId: string | null;
   activeDossierId: string | null;
   ready: boolean;
-  source: 'local' | 'seed' | null;
+  source: 'api' | 'local' | 'seed' | null;
   persisting: boolean;
 
-  // Matrice du dossier ACTIF (miroir de dossiers[activeDossierId].data)
   roles: Role[];
   fonctions: Fonction[];
   perms: PermMap;
 
-  // Cycle de vie
-  init: () => void;
+  init: () => Promise<void>;
 
-  // Auth
   currentUser: () => User | null;
-  login: (email: string, password: string) => { ok: boolean; error?: string };
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
 
-  // Dossiers
   myDossiers: () => Dossier[];
   setActiveDossier: (id: string) => void;
   createDossier: (nom: string, client: string) => string;
   updateDossier: (id: string, patch: { nom?: string; client?: string }) => void;
   removeDossier: (id: string) => void;
 
-  // Utilisateurs (admin)
   upsertUser: (user: User) => void;
   removeUser: (id: string) => void;
 
-  // Autorisations (dossier actif)
   toggle: (fonctionId: string, objet: string, intitule: string, fonction: string) => void;
   resetReferenceDefaults: () => void;
   clearAll: () => void;
@@ -82,7 +84,6 @@ interface StoreState {
   setAllForFonction: (fonctionId: string, value: boolean) => void;
   copyFonctionPerms: (fromId: string, toId: string) => void;
 
-  // CRUD rôles / fonctions (dossier actif)
   upsertRole: (role: Role) => void;
   removeRole: (roleId: string) => void;
   upsertFonction: (f: Fonction) => void;
@@ -92,43 +93,95 @@ interface StoreState {
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
 
 export const useMatrixStore = create<StoreState>((set, get) => {
-  /** Sauvegarde l'état applicatif complet (débattue). */
-  function persistApp() {
+  function persistLocalApp() {
     const { users, dossiers, currentUserId, activeDossierId } = get();
     const app: AppState = { users, dossiers, currentUserId, activeDossierId };
-    if (saveTimer) clearTimeout(saveTimer);
-    set({ persisting: true });
-    saveTimer = setTimeout(() => {
-      try {
-        localStorage.setItem(LS_KEY, JSON.stringify(app));
-      } catch {
-        /* ignore */
-      }
-      set({ persisting: false });
-    }, 250);
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(app));
+    } catch {
+      /* ignore */
+    }
   }
 
-  /** Écrit la matrice active (flat) dans le dossier actif, puis persiste. */
-  function commit() {
+  /** Écrit la matrice active (flat) dans le dossier actif en mémoire. */
+  function syncFlatIntoActive() {
     set((state) => {
       if (!state.activeDossierId) return {};
       const dossiers = state.dossiers.map((d) =>
-        d.id === state.activeDossierId
-          ? { ...d, data: { roles: state.roles, fonctions: state.fonctions, perms: state.perms } }
-          : d,
+        d.id === state.activeDossierId ? { ...d, data: { roles: state.roles, fonctions: state.fonctions, perms: state.perms } } : d,
       );
       return { dossiers };
     });
-    persistApp();
   }
 
-  /** Charge la matrice d'un dossier dans les champs plats (ou vide). */
+  /** Persiste après une mutation de matrice, selon le mode. */
+  function commit() {
+    syncFlatIntoActive();
+    if (get().mode === 'local') {
+      persistLocalApp();
+      return;
+    }
+    // API : PUT débattu de la matrice du dossier actif
+    if (saveTimer) clearTimeout(saveTimer);
+    set({ persisting: true });
+    saveTimer = setTimeout(async () => {
+      const { activeDossierId, roles, fonctions, perms } = get();
+      if (!activeDossierId) return set({ persisting: false });
+      try {
+        await apiClient.putDossierData(activeDossierId, { roles, fonctions, perms });
+      } catch {
+        /* réseau : conservé en mémoire, réessayé au prochain commit */
+      } finally {
+        set({ persisting: false });
+      }
+    }, 400);
+  }
+
   function flatFromDossier(dossiers: Dossier[], id: string | null) {
     const d = id ? dossiers.find((x) => x.id === id) : null;
-    return d ? { roles: d.data.roles, fonctions: d.data.fonctions, perms: d.data.perms } : { roles: [], fonctions: [], perms: {} };
+    return d ? { roles: d.data.roles, fonctions: d.data.fonctions, perms: d.data.perms } : { ...emptyData };
+  }
+
+  /** API : charge la matrice d'un dossier (si absente) et l'installe comme active. */
+  async function activateApiDossier(id: string | null) {
+    if (!id) {
+      set({ activeDossierId: null, ...emptyData });
+      return;
+    }
+    let data = get().dossiers.find((d) => d.id === id)?.data;
+    const isLoaded = data && (data.roles.length > 0 || data.fonctions.length > 0 || Object.keys(data.perms).length > 0);
+    if (!isLoaded) {
+      try {
+        const r = await apiClient.getDossierData(id);
+        data = r.data;
+        set((s) => ({ dossiers: s.dossiers.map((d) => (d.id === id ? { ...d, data: r.data } : d)) }));
+      } catch {
+        data = { ...emptyData };
+      }
+    }
+    set({ activeDossierId: id, roles: data!.roles, fonctions: data!.fonctions, perms: data!.perms });
+  }
+
+  /** API : (re)charge la liste des dossiers accessibles + éventuellement les utilisateurs. */
+  async function loadApiWorkspace(user: User) {
+    const { dossiers } = await apiClient.listDossiers();
+    const dossierObjs: Dossier[] = dossiers.map((m) => ({ ...m, data: { ...emptyData } }));
+    let users: User[] = [user];
+    if (user.type === 'admin') {
+      try {
+        const r = await apiClient.listUsers();
+        users = r.users.map(toUser);
+      } catch {
+        /* ignore */
+      }
+    }
+    set({ users, dossiers: dossierObjs, currentUserId: user.id });
+    const firstId = dossierObjs[0]?.id ?? null;
+    await activateApiDossier(firstId);
   }
 
   return {
+    mode: null,
     users: [],
     dossiers: [],
     currentUserId: null,
@@ -140,13 +193,44 @@ export const useMatrixStore = create<StoreState>((set, get) => {
     fonctions: [],
     perms: {},
 
-    init() {
+    async init() {
+      const online = await apiClient.health();
+      if (online) {
+        const token = (() => {
+          try {
+            return localStorage.getItem(TOKEN_KEY);
+          } catch {
+            return null;
+          }
+        })();
+        setAuthToken(token);
+        if (token) {
+          try {
+            const { user } = await apiClient.me();
+            await loadApiWorkspace(toUser(user));
+            set({ mode: 'api', source: 'api', ready: true });
+            return;
+          } catch {
+            setAuthToken(null);
+            try {
+              localStorage.removeItem(TOKEN_KEY);
+            } catch {
+              /* ignore */
+            }
+          }
+        }
+        set({ mode: 'api', source: 'api', ready: true, currentUserId: null, users: [], dossiers: [] });
+        return;
+      }
+
+      // Mode local (hors-ligne)
       const stored = loadApp();
       const app = stored ?? seedApp();
       const user = app.users.find((u) => u.id === app.currentUserId) ?? null;
       const acc = accessibleDossiers(user, app.dossiers);
       const activeId = app.activeDossierId && acc.some((d) => d.id === app.activeDossierId) ? app.activeDossierId : acc[0]?.id ?? null;
       set({
+        mode: 'local',
         users: app.users,
         dossiers: app.dossiers,
         currentUserId: user ? user.id : null,
@@ -162,20 +246,46 @@ export const useMatrixStore = create<StoreState>((set, get) => {
       return users.find((u) => u.id === currentUserId) ?? null;
     },
 
-    login(email, password) {
+    async login(email, password) {
+      if (get().mode === 'api') {
+        try {
+          const { token, user } = await apiClient.login(email, password);
+          setAuthToken(token);
+          try {
+            localStorage.setItem(TOKEN_KEY, token);
+          } catch {
+            /* ignore */
+          }
+          await loadApiWorkspace(toUser(user));
+          return { ok: true };
+        } catch (e) {
+          return { ok: false, error: e instanceof Error ? e.message : 'Échec de la connexion.' };
+        }
+      }
+      // local
       const { users, dossiers } = get();
       const user = users.find((u) => u.email.trim().toLowerCase() === email.trim().toLowerCase());
       if (!user || user.password !== password) return { ok: false, error: 'Identifiants incorrects.' };
       const acc = accessibleDossiers(user, dossiers);
       const activeId = acc[0]?.id ?? null;
       set({ currentUserId: user.id, activeDossierId: activeId, ...flatFromDossier(dossiers, activeId) });
-      persistApp();
+      persistLocalApp();
       return { ok: true };
     },
 
     logout() {
+      if (get().mode === 'api') {
+        setAuthToken(null);
+        try {
+          localStorage.removeItem(TOKEN_KEY);
+        } catch {
+          /* ignore */
+        }
+        set({ currentUserId: null, activeDossierId: null, users: [], dossiers: [], roles: [], fonctions: [], perms: {} });
+        return;
+      }
       set({ currentUserId: null, activeDossierId: null, roles: [], fonctions: [], perms: {} });
-      persistApp();
+      persistLocalApp();
     },
 
     myDossiers() {
@@ -183,30 +293,38 @@ export const useMatrixStore = create<StoreState>((set, get) => {
     },
 
     setActiveDossier(id) {
-      const { dossiers } = get();
-      const acc = accessibleDossiers(get().currentUser(), dossiers);
+      const acc = accessibleDossiers(get().currentUser(), get().dossiers);
       if (!acc.some((d) => d.id === id)) return;
-      set({ activeDossierId: id, ...flatFromDossier(dossiers, id) });
-      persistApp();
+      if (get().mode === 'api') {
+        void activateApiDossier(id);
+        return;
+      }
+      set({ activeDossierId: id, ...flatFromDossier(get().dossiers, id) });
+      persistLocalApp();
     },
 
     createDossier(nom, client) {
+      if (get().mode === 'api') {
+        apiClient
+          .createDossier(nom, client)
+          .then((r) => set((s) => ({ dossiers: [...s.dossiers, { ...r.dossier, data: buildDossierSeedData(true) }] })))
+          .catch(() => void 0);
+        return '';
+      }
       const id = uid('dossier');
-      const dossier: Dossier = { id, nom, client, data: buildDossierSeedData(true) };
-      set((state) => ({ dossiers: [...state.dossiers, dossier] }));
-      persistApp();
+      set((state) => ({ dossiers: [...state.dossiers, { id, nom, client, data: buildDossierSeedData(true) }] }));
+      persistLocalApp();
       return id;
     },
 
     updateDossier(id, patch) {
-      set((state) => ({
-        dossiers: state.dossiers.map((d) => (d.id === id ? { ...d, ...patch } : d)),
-      }));
-      persistApp();
+      set((state) => ({ dossiers: state.dossiers.map((d) => (d.id === id ? { ...d, ...patch } : d)) }));
+      if (get().mode === 'api') apiClient.updateDossier(id, patch).catch(() => void 0);
+      else persistLocalApp();
     },
 
     removeDossier(id) {
-      set((state) => {
+      const apply = (state: StoreState) => {
         const dossiers = state.dossiers.filter((d) => d.id !== id);
         const users = state.users.map((u) => ({ ...u, dossierIds: u.dossierIds.filter((x) => x !== id) }));
         let activeDossierId = state.activeDossierId;
@@ -217,27 +335,45 @@ export const useMatrixStore = create<StoreState>((set, get) => {
           flat = flatFromDossier(dossiers, activeDossierId);
         }
         return { dossiers, users, activeDossierId, ...flat };
-      });
-      persistApp();
+      };
+      if (get().mode === 'api') {
+        apiClient.deleteDossier(id).then(() => set(apply)).catch(() => void 0);
+        return;
+      }
+      set(apply);
+      persistLocalApp();
     },
 
     upsertUser(user) {
+      const exists = get().users.some((u) => u.id === user.id);
+      if (get().mode === 'api') {
+        const payload = { nom: user.nom, email: user.email, password: user.password || undefined, type: user.type, dossierIds: user.dossierIds };
+        const p = exists ? apiClient.updateUser(user.id, payload) : apiClient.createUser(payload);
+        p.then((r) => {
+          const saved = toUser(r.user);
+          set((s) => ({ users: s.users.some((u) => u.id === saved.id) ? s.users.map((u) => (u.id === saved.id ? saved : u)) : [...s.users, saved] }));
+        }).catch(() => void 0);
+        return;
+      }
       set((state) => {
         const i = state.users.findIndex((u) => u.id === user.id);
         const users = i === -1 ? [...state.users, user] : state.users.map((u) => (u.id === user.id ? user : u));
         return { users };
       });
-      persistApp();
+      persistLocalApp();
     },
 
     removeUser(id) {
+      if (get().mode === 'api') {
+        apiClient.deleteUser(id).then(() => set((s) => ({ users: s.users.filter((u) => u.id !== id) }))).catch(() => void 0);
+        return;
+      }
       set((state) => {
         const users = state.users.filter((u) => u.id !== id);
-        // suppression de soi → déconnexion
         if (state.currentUserId === id) return { users, currentUserId: null, activeDossierId: null, roles: [], fonctions: [], perms: {} };
         return { users };
       });
-      persistApp();
+      persistLocalApp();
     },
 
     // --- Autorisations (dossier actif) ---

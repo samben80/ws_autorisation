@@ -9,10 +9,14 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const submit = (e: React.FormEvent) => {
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = login(email, password);
-    setError(res.ok ? null : res.error ?? 'Échec de la connexion.');
+    setBusy(true);
+    setError(null);
+    const res = await login(email, password);
+    setBusy(false);
+    if (!res.ok) setError(res.error ?? 'Échec de la connexion.');
   };
 
   const field: React.CSSProperties = {
@@ -51,7 +55,7 @@ export function LoginPage() {
           )}
 
           <div style={{ marginTop: 18 }}>
-            <Button type="submit" variant="primary">Se connecter</Button>
+            <Button type="submit" variant="primary">{busy ? 'Connexion…' : 'Se connecter'}</Button>
           </div>
         </form>
 
