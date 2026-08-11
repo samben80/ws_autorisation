@@ -50,6 +50,9 @@ export function Shell({ children }: { children: ReactNode }) {
         <NavLink to="/organigramme" style={navStyle}>
           Organigramme
         </NavLink>
+        <NavLink to="/sql" style={navStyle}>
+          Script SQL
+        </NavLink>
         {isAdmin && (
           <NavLink to="/admin" style={navStyle}>
             Administration
