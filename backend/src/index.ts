@@ -1,6 +1,9 @@
 // Serveur API : authentification, dossiers multi-tenant, génération SQL.
+// Sert également le frontend statique (déploiement full-stack, même origine).
 import express from 'express';
 import cors from 'cors';
+import path from 'node:path';
+import fs from 'node:fs';
 import './db.js'; // initialise la base + seed au démarrage
 import { authRouter } from './routes/auth.js';
 import { usersRouter } from './routes/users.js';
@@ -29,6 +32,19 @@ app.post('/api/sql/generate', requireAuth, (req, res) => {
   }
   res.json({ sql: buildSql(profil) });
 });
+
+// Frontend statique (si présent). En dev, Vite sert l'UI et ce bloc est ignoré.
+const FRONTEND_DIR = process.env.FRONTEND_DIR ?? path.resolve(process.cwd(), 'frontend/dist');
+if (fs.existsSync(path.join(FRONTEND_DIR, 'index.html'))) {
+  app.use(express.static(FRONTEND_DIR));
+  // SPA fallback : toute route non-API renvoie index.html
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(FRONTEND_DIR, 'index.html'));
+  });
+  // eslint-disable-next-line no-console
+  console.log(`[backend] frontend servi depuis ${FRONTEND_DIR}`);
+}
 
 app.listen(PORT, () => {
   // eslint-disable-next-line no-console

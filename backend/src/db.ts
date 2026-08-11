@@ -6,9 +6,8 @@ import fs from 'node:fs';
 import { SEED_USERS, SEED_DOSSIER, buildDossierSeedData } from './data/seed.js';
 import type { DossierData, DossierMeta, PublicUser, UserType } from './types.js';
 
-const DATA_DIR = path.resolve(process.cwd(), 'data');
-fs.mkdirSync(DATA_DIR, { recursive: true });
-const DB_PATH = process.env.DB_PATH ?? path.join(DATA_DIR, 'wavesoft.db');
+const DB_PATH = process.env.DB_PATH ?? path.resolve(process.cwd(), 'data', 'wavesoft.db');
+fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 
 export const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');

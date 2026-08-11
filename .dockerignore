@@ -1,0 +1,13 @@
+**/node_modules
+**/dist
+**/dist-standalone
+backend/data
+.git
+.gitignore
+*.log
+.DS_Store
+screenshots
+*.dc.html
+support.js
+wavesoft-catalog.js
+AUTORISATIONS_MATRICE.pdf

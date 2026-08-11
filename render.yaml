@@ -1,0 +1,20 @@
+# Render Blueprint — https://render.com  (déploiement en 1 clic depuis le repo)
+# Le disque persistant nécessite un plan payant (Starter ou +).
+services:
+  - type: web
+    name: ws-autorisation
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true # généré et conservé par Render
+      - key: JWT_EXPIRES
+        value: 12h
+      - key: PORT
+        value: 8787
+    disk:
+      name: data
+      mountPath: /app/backend/data
+      sizeGB: 1

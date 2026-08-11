@@ -19,3 +19,9 @@ backend/data/
 
 # Build autonome (single-file)
 frontend/dist-standalone/
+
+# Bases de données locales
+data/
+*.db
+*.db-shm
+*.db-wal

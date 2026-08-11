@@ -284,3 +284,42 @@ VITE_API_URL=https://api.exemple.ma/api npm -w frontend run build
 ```
 Ou servir front + backend derrière le même domaine avec `/api` proxifié
 vers le backend (aucune variable nécessaire, `/api` par défaut).
+
+## Déploiement (full-stack, un seul service)
+
+Le `Dockerfile` construit une image qui **sert l'API et le frontend** sur le
+même port (même origine → aucune variable côté front). SQLite est persisté
+sur un volume monté en `/app/backend/data`.
+
+Fichiers fournis :
+- `Dockerfile` + `.dockerignore` — image de production.
+- `docker-compose.yml` — VPS / local.
+- `render.yaml` — Render (Blueprint, disque persistant).
+- `fly.toml` — Fly.io (volume + secret).
+
+**Variable obligatoire** : `JWT_SECRET` (secret long et aléatoire). Optionnel :
+`JWT_EXPIRES` (défaut `12h`), `DB_PATH` (défaut `/app/backend/data/wavesoft.db`
+dans l'image).
+
+### Docker / VPS
+```bash
+JWT_SECRET=$(openssl rand -hex 32) docker compose up -d --build
+# → http://localhost:8787   (UI + API, base persistée dans le volume)
+```
+
+### Render
+Pousser le repo, « New → Blueprint », sélectionner `render.yaml`.
+`JWT_SECRET` est généré automatiquement ; le disque conserve la base.
+
+### Fly.io
+```bash
+fly launch --no-deploy
+fly volumes create wavesoft_data --size 1
+fly secrets set JWT_SECRET=$(openssl rand -hex 32)
+fly deploy
+```
+
+> La base SQLite doit résider sur un **volume persistant** (déjà configuré).
+> Sans volume, les données seraient perdues à chaque redéploiement.
+> Au premier démarrage, la base est seedée (dossier SA TOYMART + 3 comptes) —
+> **changez les mots de passe de démonstration** avant une mise en production.
